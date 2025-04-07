@@ -221,9 +221,9 @@ def append_document_dates(dockets_list, db_conn=None):
         query = """
         SELECT
             docket_id,
-            MIN(posted_date) AS first_posted_date,
-            MIN(comment_start_date) AS comments_open_date,
-            MAX(comment_end_date) AS comments_close_date
+            MIN(posted_date) AS dateCreated,
+            MIN(comment_start_date) AS dateCommentsOpened,
+            MAX(comment_end_date) AS dateClosed
         FROM documents
         WHERE docket_id = ANY(%s)
         GROUP BY docket_id
@@ -249,9 +249,9 @@ def append_document_dates(dockets_list, db_conn=None):
         # Append the document date fields to each docket in the list
         for item in dockets_list:
             docket_id = item["id"]
-            item["firstPostedDate"] = first_posted_dates.get(docket_id)
-            item["commentsOpenDate"] = comments_open_dates.get(docket_id)
-            item["commentsCloseDate"] = comments_close_dates.get(docket_id)
+            item["dateCreated"] = first_posted_dates.get(docket_id)
+            item["dateCommentsOpened"] = comments_open_dates.get(docket_id)
+            item["dateClosed"] = comments_close_dates.get(docket_id)
 
         logging.info("Successfully appended document dates.")
 
