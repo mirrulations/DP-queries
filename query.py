@@ -1,9 +1,9 @@
 import json
 from dateutil import parser as date_parser
 from datetime import datetime
-from queries.utils.query_opensearch import query_OpenSearch
-from queries.utils.query_sql import append_docket_titles
-from queries.utils.sql import connect
+from utils.query_opensearch import query_OpenSearch
+from utils.query_sql import append_docket_titles
+from utils.sql import connect
 
 def filter_dockets(dockets, filter_params=None):
     if filter_params is None:
@@ -170,6 +170,7 @@ def getSavedResults(searchTerm, sessionID, sortParams, filterParams):
 
 def search(search_params):
     conn = connect()
+    search_params = json.loads(search_params)
     searchTerm = search_params["searchTerm"]
     pageNumber = search_params["pageNumber"]
     refreshResults = search_params["refreshResults"]
@@ -184,14 +185,40 @@ def search(search_params):
     if refreshResults:
         drop_previous_results(searchTerm, sessionID, sortParams, filterParams)
 
-        os_results = query_OpenSearch(searchTerm)
+        comment_results = query_OpenSearch(searchTerm, 'comments', 'commentText')
+        attachment_results = query_OpenSearch(searchTerm, 'comments_extracted_text', 'extractedText')
+
+        os_results = []
+
+        for docket in comment_results:
+            matching_comments = comment_results.get(docket, {}).get("match", 0)
+            total_comments = comment_results.get(docket, {}).get("total", 0)
+            matching_attachments = attachment_results.get(docket, {}).get("match", 0)
+            total_attachments = attachment_results.get(docket, {}).get("total", 0)
+            if matching_comments == 0 and matching_attachments == 0:
+                continue
+            os_results.append(
+                {
+                    "id": docket,
+                    "comments": {
+                        "match": matching_comments,
+                        "total": total_comments,
+                    },
+                    "attachments": {
+                        "match": matching_attachments,
+                        "total": total_attachments,
+                    },
+                }
+            )
+
+
         results = append_docket_titles(os_results, conn)
 
         for docket in results:
             # temporary relevance score
             docket["matchQuality"] = 1
 
-        print(results)
+        # print(results)
 
         # filtered_results = filter_dockets(results, json.loads(search_params.get('filterParams')))
 
@@ -211,7 +238,7 @@ def search(search_params):
             reverse=True,
         )
 
-        print(sorted_results)
+        # print(sorted_results)
 
         # storeDockets(sorted_results, searchTerm, sessionID, json.loads(sortParams), json.loads(filterParams), totalResults)
 
@@ -279,12 +306,6 @@ if __name__ == "__main__":
     searchTerm = query_params["searchTerm"]
     print(f"searchTerm: {searchTerm}")
 
-    dockets, total_pages = search(json.dumps(query_params))
-
-    result = {
-        "currentPage": query_params["pageNumber"],
-        "totalPages": total_pages,
-        "dockets": dockets,
-    }
+    result = search(json.dumps(query_params))
 
     print(json.dumps(result, indent=4))
