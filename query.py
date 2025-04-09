@@ -6,6 +6,7 @@ from queries.utils.query_opensearch import query_OpenSearch
 from queries.utils.query_sql import append_docket_fields, append_agency_fields, append_document_counts, append_document_dates
 from queries.utils.sql import connect
 
+
 def filter_dockets(dockets, filter_params=None):
     if filter_params is None:
         return dockets

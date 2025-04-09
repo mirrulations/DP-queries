@@ -226,7 +226,8 @@ def append_document_dates(dockets_list, db_conn=None):
             docket_id,
             MIN(posted_date) AS dateCreated,
             MIN(comment_start_date) AS dateCommentsOpened,
-            MAX(comment_end_date) AS dateClosed
+            MAX(comment_end_date) AS dateClosed,
+            MIN(effective_date) AS dateEffective
         FROM documents
         WHERE docket_id = ANY(%s)
         GROUP BY docket_id
@@ -249,12 +250,21 @@ def append_document_dates(dockets_list, db_conn=None):
             for row in results
         }
 
-        # Append the document date fields to each docket in the list
+        effective_dates = {
+            row[0]: row[4].isoformat() if row[4] is not None else None
+            for row in results
+        }
+
+        '''
+        Append the document date fields to each docket in the list
+        None will be returned if dates aren't found, conforming to API spec requiring null dates
+        '''
         for item in dockets_list:
             docket_id = item["id"]
-            item["dateCreated"] = first_posted_dates.get(docket_id)
-            item["dateCommentsOpened"] = comments_open_dates.get(docket_id)
-            item["dateClosed"] = comments_close_dates.get(docket_id)
+            item["dateCreated"] = first_posted_dates.get(docket_id) 
+            item["dateCommentsOpened"] = comments_open_dates.get(docket_id) 
+            item["dateClosed"] = comments_close_dates.get(docket_id) 
+            item["dateEffective"] = effective_dates.get(docket_id) 
 
         logging.info("Successfully appended document dates.")
 
