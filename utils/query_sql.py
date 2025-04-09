@@ -51,7 +51,7 @@ def append_docket_fields(dockets_list, db_conn=None):
 
         # Query to fetch docket fields
         query = """
-        SELECT docket_id, docket_title, modify_date, docket_type, docket_abstract
+        SELECT docket_id, docket_title, modify_date, docket_type
         FROM dockets 
         WHERE docket_id = ANY(%s)
         """
@@ -63,7 +63,6 @@ def append_docket_fields(dockets_list, db_conn=None):
         docket_titles = {row[0]: row[1] for row in results}
         modify_dates = {row[0]: row[2].isoformat() for row in results}
         docket_types = {row[0]: row[3] for row in results}
-        docket_abstracts = {row[0]: row[4] for row in results}
 
 
         # Append additional fields to the dockets list
@@ -71,7 +70,6 @@ def append_docket_fields(dockets_list, db_conn=None):
             item["title"] = docket_titles.get(item["id"], "Title Not Found")
             item["dateModified"] = modify_dates.get(item["id"], "Date Not Found")
             item["docketType"] = docket_types.get(item["id"], "Docket Type Not Found")
-            item["summary"] = docket_abstracts.get(item["id"], "Docket Summary Not Found")
 
 
         dockets_list = [item for item in dockets_list if item["title"] != "Title Not Found"]
