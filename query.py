@@ -108,7 +108,6 @@ def drop_previous_results(searchTerm, sessionID, sortParams, filterParams):
         print(e)
 
     conn.commit()
-    conn.close()
 
 def storeDockets(dockets, searchTerm, sessionID, sortParams, filterParams, totalResults):
 
@@ -147,7 +146,6 @@ def storeDockets(dockets, searchTerm, sessionID, sortParams, filterParams, total
             print(e)
 
     conn.commit()
-    conn.close()
 
 def getSavedResults(searchTerm, sessionID, sortParams, filterParams):
     
