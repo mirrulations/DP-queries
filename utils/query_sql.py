@@ -270,3 +270,53 @@ def append_document_dates(dockets_list, db_conn=None):
 
     # Return the updated dockets list
     return dockets_list
+
+def append_summary_fields(dockets_list, db_conn=None):
+    '''
+    Append summary fields (abstract and summary) from the summaries table to each docket in the dockets_list.
+    If no summary data is found for a docket, default values ("Abstract Not Found", "Summary Not Found") will be used.
+    '''
+    import logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    # Use provided db_conn or establish a new connection
+    conn = db_conn if db_conn else get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Extract docket IDs from the dockets list
+        docket_ids = [item["id"] for item in dockets_list]
+
+        # Query to fetch summary fields from the summaries table
+        query = """
+        SELECT docket_id, abstract, summary
+        FROM summaries
+        WHERE docket_id = ANY(%s)
+        """
+        cursor.execute(query, (docket_ids,))
+        results = cursor.fetchall()
+
+        # Create lookup dictionaries keyed by docket_id for abstract and summary
+        abstract_lookup = {row[0]: row[1] for row in results}
+        summary_lookup = {row[0]: row[2] for row in results}
+
+        # Append the summary fields to each docket in the list
+        for item in dockets_list:
+            docket_id = item["id"]
+            item["abstract"] = abstract_lookup.get(docket_id, "Abstract Not Found")
+            item["summary"] = summary_lookup.get(docket_id, "Summary Not Found")
+
+        logging.info("Successfully appended summary fields.")
+
+    except Exception as e:
+        logging.error(f"Error executing SQL query: {e}")
+        raise DataRetrievalError("Failed to retrieve summary fields.")
+
+    finally:
+        cursor.close()
+        if not db_conn:
+            conn.close()
+        logging.info("Database connection closed.")
+
+    # Return the updated list
+    return dockets_list
