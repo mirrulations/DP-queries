@@ -2,9 +2,9 @@ import os
 from dotenv import load_dotenv
 import boto3
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
+from queries.utils.secrets_manager import get_secret
 
 def connect():
-    from queries.utils.secrets_manager import get_secret
 
     env = os.getenv("ENVIRONMENT", "").lower()
     print("[DEBUG] ENVIRONMENT from opensearch:", env)
@@ -51,13 +51,5 @@ def connect():
         pool_maxsize=20,
         timeout=30
     )
-
-    try:
-        print(f"[DEBUG] Attempting to connect to OpenSearch at {host}:{port}")
-        client.info(timeout=5)
-        print("[DEBUG] Connected successfully")
-    except Exception as e:
-        print(f"[ERROR] Failed to connect to OpenSearch: {e}")
-        raise
 
     return client

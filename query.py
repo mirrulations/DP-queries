@@ -120,7 +120,7 @@ def storeDockets(dockets, searchTerm, sessionID, sortParams, filterParams, total
             sessionID,
             sortParams["desc"],
             sortParams["sortType"],
-            ",".join(sorted(filterParams["agencies"])) if filterParams["agencies"] else '',
+            ",".join(sorted(filterParams["agencies"])) if "agencies" in filterParams else '',
             filterParams["dateRange"]["start"],
             filterParams["dateRange"]["end"],
             filterParams["docketType"],
