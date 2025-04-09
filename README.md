@@ -1,4 +1,7 @@
-# Query in Dev Environment
+# DP-queries
+This repository contains query scripts created by Data Product for use in API
+
+## Query in Dev Environment
 
 To use this, set up a `.env` file with the following fields:
 ```

@@ -44,6 +44,7 @@ def append_docket_fields(dockets_list, db_conn=None):
     conn = db_conn if db_conn else get_db_connection()
     cursor = conn.cursor()
 
+
     try:
         # Extract docket IDs from dockets list
         docket_ids = [item["id"] for item in dockets_list]
@@ -64,12 +65,14 @@ def append_docket_fields(dockets_list, db_conn=None):
         docket_types = {row[0]: row[3] for row in results}
         docket_abstracts = {row[0]: row[4] for row in results}
 
+
         # Append additional fields to the dockets list
         for item in dockets_list:
             item["title"] = docket_titles.get(item["id"], "Title Not Found")
             item["dateModified"] = modify_dates.get(item["id"], "Date Not Found")
             item["docketType"] = docket_types.get(item["id"], "Docket Type Not Found")
             item["summary"] = docket_abstracts.get(item["id"], "Docket Summary Not Found")
+
 
         dockets_list = [item for item in dockets_list if item["title"] != "Title Not Found"]
 

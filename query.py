@@ -205,6 +205,7 @@ def search(search_params):
         for docket in results:
             docket["matchQuality"] = calc_relevance_score(docket)
 
+
         print(results)
 
         # filtered_results = filter_dockets(results, json.loads(search_params.get('filterParams')))
@@ -236,6 +237,7 @@ def search(search_params):
 
         count_dockets = len(sorted_results)
         count_pages = min(count_dockets // perPage, pages)
+
         if count_dockets % perPage:
             count_pages += 1
 
@@ -273,6 +275,7 @@ def search(search_params):
         dockets = append_agency_fields(dockets, connect())
         dockets = append_document_counts(dockets, connect())
         dockets = append_document_dates(dockets, connect())
+
         ret = {"currentPage": 0, "totalPages": count_pages, "dockets": dockets}
 
         return json.dumps(ret)
