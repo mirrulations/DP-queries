@@ -1,8 +1,9 @@
 import json
+from math import exp
 from dateutil import parser as date_parser
 from datetime import datetime
 from queries.utils.query_opensearch import query_OpenSearch
-from queries.utils.query_sql import append_docket_titles
+from queries.utils.query_sql import append_docket_fields, append_agency_fields, append_document_counts, append_document_dates
 from queries.utils.sql import connect
 
 def filter_dockets(dockets, filter_params=None):
@@ -108,8 +109,8 @@ def drop_previous_results(searchTerm, sessionID, sortParams, filterParams):
 
     conn.commit()
 
-
 def storeDockets(dockets, searchTerm, sessionID, sortParams, filterParams, totalResults):
+
     conn = connect()
 
     for i in range(min(totalResults, len(dockets))):
@@ -167,9 +168,20 @@ def getSavedResults(searchTerm, sessionID, sortParams, filterParams):
 
     return dockets
 
+def calc_relevance_score(docket):
+    try:
+        total_comments = docket.get("comments", {}).get("total", 0)
+        matching_comments = docket.get("comments", {}).get("match", 0)
+        ratio = matching_comments / total_comments if total_comments > 0 else 0
+        modify_date = date_parser.isoparse(docket.get("dateModified", "1970-01-01T00:00:00Z"))
+        age_days = (datetime.now() - modify_date).days
+        decay = exp(-age_days / 365)
+        return total_comments * (ratio ** 2) * decay
+    except Exception as e:
+        print(f"Error calculating relevance score for docket {docket.get('id', 'unknown')}: {e}")
+        return 0
 
 def search(search_params):
-    conn = connect()
     searchTerm = search_params["searchTerm"]
     pageNumber = search_params["pageNumber"]
     refreshResults = search_params["refreshResults"]
@@ -185,11 +197,14 @@ def search(search_params):
         drop_previous_results(searchTerm, sessionID, sortParams, filterParams)
 
         os_results = query_OpenSearch(searchTerm)
-        results = append_docket_titles(os_results, conn)
+        results = append_docket_fields(os_results, connect())
+        results = append_agency_fields(results, connect())
+        results = append_document_counts(results, connect())
+        results = append_document_dates(results, connect())
 
         for docket in results:
-            # temporary relevance score
-            docket["matchQuality"] = 1
+            docket["matchQuality"] = calc_relevance_score(docket)
+
 
         print(results)
 
@@ -213,10 +228,16 @@ def search(search_params):
 
         print(sorted_results)
 
-        # storeDockets(sorted_results, searchTerm, sessionID, json.loads(sortParams), json.loads(filterParams), totalResults)
+        if isinstance(sortParams, str):
+            sortParams = json.loads(sortParams)
+        if isinstance(filterParams, str):
+            filterParams = json.loads(filterParams)
+
+        storeDockets(sorted_results, searchTerm, sessionID, sortParams, filterParams, totalResults)
 
         count_dockets = len(sorted_results)
-        count_pages = count_dockets // perPage
+        count_pages = min(count_dockets // perPage, pages)
+
         if count_dockets % perPage:
             count_pages += 1
 
@@ -250,7 +271,11 @@ def search(search_params):
         if count_dockets % perPage:
             count_pages += 1
 
-        dockets = append_docket_titles(dockets, connect())
+        dockets = append_docket_fields(dockets, connect())
+        dockets = append_agency_fields(dockets, connect())
+        dockets = append_document_counts(dockets, connect())
+        dockets = append_document_dates(dockets, connect())
+
         ret = {"currentPage": 0, "totalPages": count_pages, "dockets": dockets}
 
         return json.dumps(ret)
@@ -258,7 +283,7 @@ def search(search_params):
 
 if __name__ == "__main__":
     query_params = {
-        "searchTerm": "gun",
+        "searchTerm": "National",
         "pageNumber": 0,
         "refreshResults": True,
         "sessionID": "session1",
@@ -279,8 +304,10 @@ if __name__ == "__main__":
     searchTerm = query_params["searchTerm"]
     print(f"searchTerm: {searchTerm}")
 
-    dockets, total_pages = search(json.dumps(query_params))
-
+    result = search(query_params)
+    dockets = result["dockets"]
+    total_pages = result["totalPages"]
+    
     result = {
         "currentPage": query_params["pageNumber"],
         "totalPages": total_pages,
