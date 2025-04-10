@@ -69,7 +69,8 @@ def append_docket_fields(dockets_list, db_conn=None):
         # Append additional fields to the dockets list
         for item in dockets_list:
             item["title"] = docket_titles.get(item["id"], "Title Not Found")
-            item["dateModified"] = modify_dates.get(item["id"], "Date Not Found")
+            item["timelineDates"] = {}
+            item["timelineDates"]["dateModified"] = modify_dates.get(item["id"], "Date Not Found")
             item["docketType"] = docket_types.get(item["id"], "Docket Type Not Found")
             item["summary"] = docket_abstracts.get(item["id"], "Docket Summary Not Found")
 
@@ -261,10 +262,10 @@ def append_document_dates(dockets_list, db_conn=None):
         '''
         for item in dockets_list:
             docket_id = item["id"]
-            item["dateCreated"] = first_posted_dates.get(docket_id) 
-            item["dateCommentsOpened"] = comments_open_dates.get(docket_id) 
-            item["dateClosed"] = comments_close_dates.get(docket_id) 
-            item["dateEffective"] = effective_dates.get(docket_id) 
+            item["timelineDates"]["dateCreated"] = first_posted_dates.get(docket_id) 
+            item["timelineDates"]["dateCommentsOpened"] = comments_open_dates.get(docket_id) 
+            item["timelineDates"]["dateClosed"] = comments_close_dates.get(docket_id) 
+            item["timelineDates"]["dateEffective"] = effective_dates.get(docket_id) 
 
         logging.info("Successfully appended document dates.")
 

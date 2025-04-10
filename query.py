@@ -250,7 +250,7 @@ def search(search_params):
         )
         sorted_results = sorted(
             sorted_results1,
-            key=lambda x: date_parser.isoparse(x.get("dateModified")).year,
+            key=lambda x: date_parser.isoparse(x.get("timelineDates").get("dateModified")).year,
             reverse=True,
         )
 
