@@ -301,8 +301,8 @@ def append_summary_fields(dockets_list, db_conn=None):
         # Append the summary fields to each docket in the list
         for item in dockets_list:
             docket_id = item["id"]
-            item["abstract"] = abstract_lookup.get(docket_id, "Abstract Not Found")
-            item["summary"] = summary_lookup.get(docket_id, "Summary Not Found")
+            # Check abstract_lookup first, then fallback to summary_lookup if None
+            item["summary"] = abstract_lookup.get(docket_id) or summary_lookup.get(docket_id, "Summary Not Found")
 
         logging.info("Successfully appended summary fields.")
 
