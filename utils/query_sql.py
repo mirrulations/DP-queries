@@ -51,7 +51,7 @@ def append_docket_fields(dockets_list, db_conn=None):
 
         # Query to fetch docket fields
         query = """
-        SELECT docket_id, docket_title, modify_date, docket_type, docket_abstract
+        SELECT docket_id, docket_title, modify_date, docket_type
         FROM dockets 
         WHERE docket_id = ANY(%s)
         """
@@ -63,7 +63,6 @@ def append_docket_fields(dockets_list, db_conn=None):
         docket_titles = {row[0]: row[1] for row in results}
         modify_dates = {row[0]: row[2].isoformat() for row in results}
         docket_types = {row[0]: row[3] for row in results}
-        docket_abstracts = {row[0]: row[4] for row in results}
 
 
         # Append additional fields to the dockets list
@@ -72,7 +71,6 @@ def append_docket_fields(dockets_list, db_conn=None):
             item["timelineDates"] = {}
             item["timelineDates"]["dateModified"] = modify_dates.get(item["id"], "Date Not Found")
             item["docketType"] = docket_types.get(item["id"], "Docket Type Not Found")
-            item["summary"] = docket_abstracts.get(item["id"], "Docket Summary Not Found")
 
 
         dockets_list = [item for item in dockets_list if item["title"] != "Title Not Found"]
@@ -280,4 +278,54 @@ def append_document_dates(dockets_list, db_conn=None):
         logging.info("Database connection closed.")
 
     # Return the updated dockets list
+    return dockets_list
+
+def append_summary_fields(dockets_list, db_conn=None):
+    '''
+    Append summary fields (abstract and summary) from the summaries table to each docket in the dockets_list.
+    If no summary data is found for a docket, default values ("Abstract Not Found", "Summary Not Found") will be used.
+    '''
+    import logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    # Use provided db_conn or establish a new connection
+    conn = db_conn if db_conn else get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Extract docket IDs from the dockets list
+        docket_ids = [item["id"] for item in dockets_list]
+
+        # Query to fetch summary fields from the summaries table
+        query = """
+        SELECT docket_id, abstract, summary
+        FROM summaries
+        WHERE docket_id = ANY(%s)
+        """
+        cursor.execute(query, (docket_ids,))
+        results = cursor.fetchall()
+
+        # Create lookup dictionaries keyed by docket_id for abstract and summary
+        abstract_lookup = {row[0]: row[1] for row in results}
+        summary_lookup = {row[0]: row[2] for row in results}
+
+        # Append the summary fields to each docket in the list
+        for item in dockets_list:
+            docket_id = item["id"]
+            # Check abstract_lookup first, then fallback to summary_lookup if None
+            item["summary"] = abstract_lookup.get(docket_id) or summary_lookup.get(docket_id, "Summary Not Found")
+
+        logging.info("Successfully appended summary fields.")
+
+    except Exception as e:
+        logging.error(f"Error executing SQL query: {e}")
+        raise DataRetrievalError("Failed to retrieve summary fields.")
+
+    finally:
+        cursor.close()
+        if not db_conn:
+            conn.close()
+        logging.info("Database connection closed.")
+
+    # Return the updated list
     return dockets_list
