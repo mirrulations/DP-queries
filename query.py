@@ -264,10 +264,12 @@ def search(search_params):
         storeDockets(sorted_results, searchTerm, sessionID, sortParams, filterParams, totalResults)
 
         count_dockets = len(sorted_results)
-        count_pages = min(count_dockets // perPage, pages)
 
+        count_pages = count_dockets // perPage
         if count_dockets % perPage:
             count_pages += 1
+
+        count_pages = min(count_pages, pages)
 
         ret = {
             "currentPage": pageNumber,
@@ -295,9 +297,12 @@ def search(search_params):
         dockets = dockets[perPage * pageNumber : perPage * (pageNumber + 1)]
 
         count_dockets = len(dockets)
+        
         count_pages = count_dockets // perPage
         if count_dockets % perPage:
             count_pages += 1
+
+        count_pages = min(count_pages, pages)
 
         dockets = append_docket_fields(dockets, connect())
         dockets = append_agency_fields(dockets, connect())
