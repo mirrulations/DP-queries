@@ -271,7 +271,7 @@ def search(search_params):
             count_pages += 1
 
         ret = {
-            "currentPage": 0,
+            "currentPage": pageNumber,
             "totalPages": count_pages,
             "dockets": sorted_results[
                 int(perPage) * int(pageNumber) : int(perPage) * (int(pageNumber) + 1)
@@ -305,7 +305,7 @@ def search(search_params):
         dockets = append_document_counts(dockets, connect())
         dockets = append_document_dates(dockets, connect())
 
-        ret = {"currentPage": 0, "totalPages": count_pages, "dockets": dockets}
+        ret = {"currentPage": pageNumber, "totalPages": count_pages, "dockets": dockets}
 
         return json.dumps(ret)
 
