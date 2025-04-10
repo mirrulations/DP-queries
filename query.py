@@ -184,7 +184,6 @@ def calc_relevance_score(docket):
 
 def search(search_params):
     conn = connect()
-    search_params = json.loads(search_params)
 
     searchTerm = search_params["searchTerm"]
     pageNumber = search_params["pageNumber"]
