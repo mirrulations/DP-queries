@@ -7,6 +7,8 @@ from queries.utils.query_sql import append_docket_fields, append_agency_fields, 
 from queries.utils.sql import connect
 
 
+conn = connect()
+
 def filter_dockets(dockets, filter_params=None):
     if filter_params is None:
         return dockets
@@ -92,7 +94,6 @@ def sort_aoss_results(results, sort_type, desc=True):
 
 def drop_previous_results(searchTerm, sessionID, sortParams, filterParams):
     
-    conn = connect()
 
     try:
         with conn.cursor() as cursor:
@@ -112,7 +113,6 @@ def drop_previous_results(searchTerm, sessionID, sortParams, filterParams):
 
 def storeDockets(dockets, searchTerm, sessionID, sortParams, filterParams, totalResults):
 
-    conn = connect()
 
     for i in range(min(totalResults, len(dockets))):
         values = (
@@ -150,7 +150,6 @@ def storeDockets(dockets, searchTerm, sessionID, sortParams, filterParams, total
 
 def getSavedResults(searchTerm, sessionID, sortParams, filterParams):
     
-    conn = connect()
 
     try:
         with conn.cursor() as cursor:
@@ -183,7 +182,6 @@ def calc_relevance_score(docket):
         return 0
 
 def search(search_params):
-    conn = connect()
 
     searchTerm = search_params["searchTerm"]
     pageNumber = search_params["pageNumber"]
@@ -304,10 +302,10 @@ def search(search_params):
 
         count_pages = min(count_pages, pages)
 
-        dockets = append_docket_fields(dockets, connect())
-        dockets = append_agency_fields(dockets, connect())
-        dockets = append_document_counts(dockets, connect())
-        dockets = append_document_dates(dockets, connect())
+        dockets = append_docket_fields(dockets, conn)
+        dockets = append_agency_fields(dockets, conn)
+        dockets = append_document_counts(dockets, conn)
+        dockets = append_document_dates(dockets, conn)
 
         ret = {"currentPage": pageNumber, "totalPages": count_pages, "dockets": dockets}
 
