@@ -25,19 +25,25 @@ def connect():
         connection_class = RequestsHttpConnection
     else:
         print("[DEBUG] Using AWS Secrets Manager for OpenSearch.")
-        secret_name = os.getenv('OS_SECRET_NAME', 'mirrulationsdb/opensearch/master')
-        secret = get_secret(secret_name)
+        region = os.environ.get('AWS_REGION', 'us-east-1')
+        base_secret = get_secret("prod/databases")
+        resolved_os_secret_name = base_secret.get("OS_SECRET_NAME")
+
+        if not resolved_os_secret_name:
+            raise ValueError("Missing OS_SECRET_NAME in 'prod/databases'")
+
+        secret = get_secret(resolved_os_secret_name)
+
         host = secret.get("host")
         port = secret.get("port")
-        region = os.environ.get('AWS_REGION', 'us-east-1')
+
+        if not host or not port:
+            raise ValueError("Missing host or port in resolved OpenSearch secret.")
 
         auth = AWSV4SignerAuth(boto3.Session().get_credentials(), region, 'aoss')
         use_ssl = True
         verify_certs = False
         connection_class = RequestsHttpConnection
-
-    if not host or not port:
-        raise ValueError('Please set the environment variables OPENSEARCH_HOST and OPENSEARCH_PORT')
 
     client = OpenSearch(
         hosts=[{'host': host, 'port': int(port)}],
