@@ -12,6 +12,12 @@ conn = connect()
 def filter_dockets(dockets, filter_params=None):
     if filter_params is None:
         return dockets
+    
+    if isinstance(filter_params, str):
+        try:
+            filter_params = json.loads(filter_params)
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON input")
 
     agencies = filter_params.get("agencies", [])
     date_range = filter_params.get("dateRange", {})
