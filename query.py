@@ -29,7 +29,7 @@ def filter_dockets(dockets, filter_params=None):
             continue
 
         try:
-            mod_date = date_parser.isoparse(docket.get("dateModified", "1970-01-01T00:00:00Z"))
+            mod_date = date_parser.isoparse(docket.get("timelineDates", {}).get("dateModified", "1970-01-01T00:00:00Z"))
         except Exception:
             mod_date = datetime.datetime(1970, 1, 1)
         if mod_date < start_date or mod_date > end_date:
