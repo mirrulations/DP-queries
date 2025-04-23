@@ -4,12 +4,12 @@ import boto3
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 from queries.utils.secrets_manager import get_secret
 
-def connect():
 
-    env = os.getenv("ENVIRONMENT", "").lower()
+def connect():
+    env = os.getenv("AWS_SAM_LOCAL", "")
     print("[DEBUG] ENVIRONMENT from opensearch:", env)
 
-    if env == 'local':
+    if env:
         print("[DEBUG] Using local environment variables for OpenSearch.")
         load_dotenv()
         host = os.getenv('OPENSEARCH_HOST', 'opensearch-node1')
