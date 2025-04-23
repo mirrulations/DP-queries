@@ -1,7 +1,7 @@
 import json
 from math import exp
 from dateutil import parser as date_parser
-from datetime import datetime
+from datetime import datetime, timezone
 from queries.utils.query_opensearch import query_OpenSearch
 from queries.utils.query_sql import append_docket_fields, append_agency_fields, append_document_counts, append_document_dates
 from queries.utils.sql import connect
@@ -173,8 +173,9 @@ def calc_relevance_score(docket):
         total_comments = docket.get("comments", {}).get("total", 0)
         matching_comments = docket.get("comments", {}).get("match", 0)
         ratio = matching_comments / total_comments if total_comments > 0 else 0
-        modify_date = date_parser.isoparse(docket.get("dateModified", "1970-01-01T00:00:00Z"))
-        age_days = (datetime.now() - modify_date).days
+        modify_date = date_parser.isoparse(docket.get("timelineDates", {}).get("dateModified", "1970-01-01T00:00:00Z"))
+        current_time_timezone_aware = datetime.now(timezone.utc).astimezone()
+        age_days = (current_time_timezone_aware - modify_date).days
         decay = exp(-age_days / 365)
         return total_comments * (ratio ** 2) * decay
     except Exception as e:
