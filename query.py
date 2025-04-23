@@ -227,6 +227,7 @@ def search(search_params):
         results = append_agency_fields(results, conn)
         results = append_document_counts(results, conn)
         results = append_document_dates(results, conn)
+        results = filter_dockets(results, filterParams)
 
         for docket in results:
             docket["matchQuality"] = calc_relevance_score(docket)
@@ -243,14 +244,14 @@ def search(search_params):
 
         # sort by num comments,
         # sort by date
-        sorted_results1 = sorted(
+        sorted_results = sorted(
             results, key=lambda x: x.get("comments").get("match"), reverse=True
         )
-        sorted_results = sorted(
-            sorted_results1,
-            key=lambda x: date_parser.isoparse(x.get("timelineDates").get("dateModified")).year,
-            reverse=True,
-        )
+        # sorted_results = sorted(
+        #     sorted_results1,
+        #     key=lambda x: date_parser.isoparse(x.get("timelineDates").get("dateModified")).year,
+        #     reverse=True,
+        # )
 
         # print(sorted_results)
 
