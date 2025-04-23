@@ -51,7 +51,7 @@ def append_docket_fields(dockets_list, db_conn=None):
 
         # Query to fetch docket fields
         query = """
-        SELECT docket_id, docket_title, modify_date, docket_type, docket_abstract
+        SELECT docket_id, docket_title, modify_date, docket_type
         FROM dockets 
         WHERE docket_id = ANY(%s)
         """
@@ -63,7 +63,7 @@ def append_docket_fields(dockets_list, db_conn=None):
         docket_titles = {row[0]: row[1] for row in results}
         modify_dates = {row[0]: row[2].isoformat() for row in results}
         docket_types = {row[0]: row[3] for row in results}
-        docket_abstracts = {row[0]: row[4] for row in results}
+        #docket_abstracts = {row[0]: row[4] for row in results}
 
 
         # Append additional fields to the dockets list
@@ -72,7 +72,7 @@ def append_docket_fields(dockets_list, db_conn=None):
             item["timelineDates"] = {}
             item["timelineDates"]["dateModified"] = modify_dates.get(item["id"], "Date Not Found")
             item["docketType"] = docket_types.get(item["id"], "Docket Type Not Found")
-            item["summary"] = docket_abstracts.get(item["id"], "Docket Summary Not Found")
+            #item["summary"] = docket_abstracts.get(item["id"], "Docket Summary Not Found")
 
 
         dockets_list = [item for item in dockets_list if item["title"] != "Title Not Found"]
@@ -280,4 +280,72 @@ def append_document_dates(dockets_list, db_conn=None):
         logging.info("Database connection closed.")
 
     # Return the updated dockets list
+    return dockets_list
+
+
+def append_summary(dockets_list, db_conn=None):
+    """
+    For each docket, append the abstract if available (and 10 or more words), otherwise append the HTM summary.
+    If neither exists, return None (null).
+    """
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    conn = db_conn if db_conn else get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        docket_ids = [item["id"] for item in dockets_list]
+
+        # Query to get abstracts where abstracts are not null and have at least 10 words
+        cursor.execute("""
+            SELECT docket_id, abstract
+            FROM abstracts
+            WHERE docket_id = ANY(%s)
+              AND abstract IS NOT NULL
+              AND array_length(regexp_split_to_array(abstract, '\s+'), 1) > 9
+        """, (docket_ids,))
+
+        # Fetch results and format them as JSON
+        abstract_results = cursor.fetchall()
+        abstract_lookup = {row[0]: row[1] for row in abstract_results}
+
+        # Find docket IDs that are missing abstracts to query HTM summaries
+        missing_abstract_ids = list(set(docket_ids) - set(abstract_lookup.keys()))
+
+        # Query to return most recent HTM summary (based on largest summary_id)
+        if missing_abstract_ids:
+            cursor.execute("""
+                SELECT DISTINCT ON (docket_id)
+                    docket_id, summary
+                FROM htm_summaries
+                WHERE docket_id = ANY(%s) AND summary IS NOT NULL
+                ORDER BY docket_id, summary_id DESC
+            """, (missing_abstract_ids,))
+
+            summary_results = cursor.fetchall()
+            summary_lookup = {row[0]: row[1] for row in summary_results}
+        else:
+            summary_lookup = {}
+
+        # Merge results into dockets_list, returns None if no summary is found
+        for item in dockets_list:
+            docket_id = item["id"]
+            if docket_id in abstract_lookup:
+                item["summary"] = abstract_lookup[docket_id]
+            elif docket_id in summary_lookup:
+                item["summary"] = summary_lookup[docket_id]
+            else:
+                item["summary"] = None
+
+        logging.info("Successfully appended summary info.")
+
+    except Exception as e:
+        logging.error(f"Error retrieving summaries: {e}")
+        raise
+
+    finally:
+        cursor.close()
+        if not db_conn:
+            conn.close()
+        logging.info("Database connection closed.")
+
     return dockets_list
