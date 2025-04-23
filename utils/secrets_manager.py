@@ -4,10 +4,10 @@ import boto3
 import traceback 
 
 def get_secret(secret_name):
-    env = os.getenv("ENVIRONMENT", "").lower()
+    env = os.getenv("AWS_SAM_LOCAL", "")
     print("[DEBUG] ENVIRONMENT from secrets_manager:", env)
 
-    if env == "local":
+    if env:
         print("[DEBUG] Using local environment variables for secrets.")
         print("[DEBUG] All env vars:", dict(os.environ))
 
