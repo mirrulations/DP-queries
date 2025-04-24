@@ -6,9 +6,21 @@ from queries.utils.secrets_manager import get_secret
 
 
 def connect():
+    """
+    Connects to an OpenSearch cluster, configuring based on the environment:
+    - Local: Uses `.env` file variables.
+    - AWS: Retrieves details from AWS Secrets Manager.
+
+    Returns:
+        OpenSearch client instance.
+
+    Raises:
+        ValueError: If required variables or secrets are missing.
+    """
     env = os.getenv("AWS_SAM_LOCAL", "")
     print("[DEBUG] ENVIRONMENT from opensearch:", env)
 
+    # Check if running in local environment
     if env:
         print("[DEBUG] Using local environment variables for OpenSearch.")
         load_dotenv()

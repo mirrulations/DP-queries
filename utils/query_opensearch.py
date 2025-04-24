@@ -2,7 +2,9 @@ from queries.utils.opensearch import connect as create_client
 
 client = create_client()
 def query_OpenSearch(search_term, index_name, field_name):
-
+    """
+    Runs an OpenSearch aggregation query to get docketId stats.
+    """
     query = {
         "size": 0,  # No need to fetch individual documents
         "aggs": {

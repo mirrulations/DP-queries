@@ -4,6 +4,10 @@ import boto3
 import traceback 
 
 def get_secret(secret_name):
+    """
+    Retrieve a secret by name from local env or AWS Secrets Manager.
+    This function supports both local development and production environments.
+    """
     env = os.getenv("AWS_SAM_LOCAL", "")
     print("[DEBUG] ENVIRONMENT from secrets_manager:", env)
 

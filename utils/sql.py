@@ -4,6 +4,10 @@ from queries.utils.secrets_manager import get_secret
 
 
 def connect():
+    """
+    Connects to a PostgreSQL database using credentials from environment variables 
+    or AWS Secrets Manager, based on the `AWS_SAM_LOCAL` flag.
+    """
     if os.getenv("AWS_SAM_LOCAL", ""):
         secret = {
             "db": os.environ.get("POSTGRES_DB"),

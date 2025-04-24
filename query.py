@@ -10,6 +10,19 @@ from queries.utils.sql import connect
 conn = connect()
 
 def filter_dockets(dockets, filter_params=None):
+    """
+    Filters a list of dockets based on the provided filter parameters.
+
+    Parameters:
+        dockets (list): A list of docket dictionaries to filter.
+        filter_params: JSON string containing filter criteria.
+            - "agencies" (list): List of agency IDs to include.
+            - "dateRange" (dict): A dictionary with "start" and "end" keys for filtering by date.
+            - "docketType" (str): The type of docket to include.
+
+    Returns:
+        list: A filtered list of dockets that match the criteria.
+    """
     if filter_params is None:
         return dockets
     
@@ -99,7 +112,9 @@ def sort_aoss_results(results, sort_type, desc=True):
     return results
 
 def drop_previous_results(searchTerm, sessionID, sortParams, filterParams):
-    
+    """
+    Deletes previously stored search results from the database for a given search term and session.
+    """
 
     try:
         with conn.cursor() as cursor:
@@ -118,7 +133,20 @@ def drop_previous_results(searchTerm, sessionID, sortParams, filterParams):
     conn.commit()
 
 def storeDockets(dockets, searchTerm, sessionID, sortParams, filterParams, totalResults):
+    """
+    Stores the search results (dockets) into the database.
 
+    Parameters:
+        dockets (list): A list of docket dictionaries to store.
+        searchTerm (str): The search term used in the query.
+        sessionID (str): The session ID for the current search.
+        sortParams (dict): Sorting parameters.
+        filterParams (dict): Filtering parameters.
+        totalResults (int): The total number of results to store.
+
+    Returns:
+        None
+    """
 
     for i in range(min(totalResults, len(dockets))):
         values = (
@@ -155,7 +183,18 @@ def storeDockets(dockets, searchTerm, sessionID, sortParams, filterParams, total
     conn.commit()
 
 def getSavedResults(searchTerm, sessionID, sortParams, filterParams):
-    
+    """
+    Retrieves previously stored search results from the database.
+
+    Parameters:
+        searchTerm (str): The search term used in the query.
+        sessionID (str): The session ID for the current search.
+        sortParams (dict): Sorting parameters.
+        filterParams (dict): Filtering parameters.
+
+    Returns:
+        list: A list of saved docket results from the database.
+    """    
 
     try:
         with conn.cursor() as cursor:
@@ -175,6 +214,10 @@ def getSavedResults(searchTerm, sessionID, sortParams, filterParams):
     return dockets
 
 def calc_relevance_score(docket):
+    """
+    Score is Docket based on its comments and age.
+    Calculates relevance score as: total_comments * (ratio ** 2) * decay.
+    """
     try:
         total_comments = docket.get("comments", {}).get("total", 0)
         matching_comments = docket.get("comments", {}).get("match", 0)
@@ -189,7 +232,24 @@ def calc_relevance_score(docket):
         return 0
 
 def search(search_params):
+    """
+    Executes a search query, processes the results, and returns paginated data.
 
+    Parameters:
+        search_params (dict): A dictionary containing search parameters:
+            - "searchTerm" (str): The term to search for.
+            - "pageNumber" (int): The page number for pagination.
+            - "refreshResults" (bool): Whether to refresh results or use cached data.
+            - "sessionID" (str): The session ID for the current search.
+            - "sortParams" (dict): Sorting parameters.
+            - "filterParams" (dict): Filtering parameters.
+
+    Returns:
+        dict: A dictionary containing paginated search results with:
+            - "currentPage": The current page number.
+            - "totalPages": The total number of pages.
+            - "dockets": A list of dockets for the current page.
+    """
     searchTerm = search_params["searchTerm"]
     pageNumber = search_params["pageNumber"]
     refreshResults = search_params["refreshResults"]
@@ -321,6 +381,10 @@ def search(search_params):
 
 
 if __name__ == "__main__":
+    """
+    Entry point for testing the search functionality. Defines sample query parameters
+    and executes the `search` function, printing the results.
+    """
     query_params = {
         "searchTerm": "National",
         "pageNumber": 0,
