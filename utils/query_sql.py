@@ -243,12 +243,15 @@ def append_summary(dockets_list, db_conn=None):
         docket_ids = [item["id"] for item in dockets_list]
 
         # Query to get abstracts where abstracts are not null and have at least 10 words
+        # COALESCE is used to get the abstract from either the dockets or abstracts table
         cursor.execute("""
-            SELECT docket_id, abstract
-            FROM abstracts
-            WHERE docket_id = ANY(%s)
-              AND abstract IS NOT NULL
-              AND array_length(regexp_split_to_array(abstract, '\s+'), 1) > 9
+            SELECT d.docket_id, COALESCE(a.abstract, d.abstract) AS abstract
+            FROM dockets d
+            LEFT JOIN abstracts a 
+            ON d.docket_id = a.docket_id
+            WHERE d.docket_id = ANY(%s)
+              AND COALESCE(a.abstract,d.abstract) IS NOT NULL
+              AND array_length(regexp_split_to_array(COALESCE(a.abstract, d.abstract), '\s+'), 1) > 9
         """, (docket_ids,))
 
         # Fetch results and format them as JSON
