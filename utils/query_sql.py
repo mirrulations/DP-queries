@@ -145,71 +145,14 @@ def append_agency_fields(dockets_list, db_conn=None):
     return dockets_list
 
 
-def append_document_counts(dockets_list, db_conn=None):
-    '''
-    Appends total document count and comment status from documents table to each docket in the dockets list.
-    Any docket not found in the query results will default to:
-      - documentCount = 0
-      - isOpenForComment = False
-    '''
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-    conn = db_conn if db_conn else get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        docket_ids = [item["id"] for item in dockets_list]
-
-        # BOOL_OR returns True if any value is True for is_open_for_comment
-        query = """
-        SELECT docket_id,
-               COUNT(document_id) AS document_count,
-               BOOL_OR(is_open_for_comment) AS is_open
-        FROM documents  
-        WHERE docket_id = ANY(%s)
-        GROUP BY docket_id
-        """
-
-        cursor.execute(query, (docket_ids,))
-        results = cursor.fetchall()
-
-        # Lookup dict by docket_id
-        document_info = {
-            row[0]: {
-                "total": row[1],
-                "is_open": row[2]
-            }
-            for row in results
-        }
-
-        # Append document counts and isOpenForComment status to dockets list
-        for item in dockets_list:
-            info = document_info.get(item["id"], {"total": 0, "is_open": False})
-            item["documentCount"] = info["total"]
-            item["isOpenForComment"] = info["is_open"]
-
-        logging.info("Successfully appended document counts and comment status to dockets.")
-
-    except Exception as e:
-        logging.error(f"Error executing SQL query: {e}")
-        raise DataRetrievalError("Failed to retrieve document counts.")
-
-    finally:
-        cursor.close()
-        if not db_conn:
-            conn.close()
-        logging.info("Database connection closed.")
-
-    # Return the updated list
-    return dockets_list
-
-
 def append_document_dates(dockets_list, db_conn=None):
     '''
-    Append document date fields (first posted date, comments open date, comments close date)
+    Append document date fields (first posted date, comments open date, comments close date, effective date)
     from the documents table to each docket in the dockets_list.
-    If no document data is found for a docket, the fields will be set to None.
+    If no document data is found for a docket, the fields will be set to None, unless dateClosed is None,
+    in which case it will be omitted and isOpenForComment will be True.
     '''
+
     # Set up logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -222,13 +165,15 @@ def append_document_dates(dockets_list, db_conn=None):
         docket_ids = [item["id"] for item in dockets_list]
 
         # Query to fetch aggregated document date fields for each docket
+        # BOOL_OR returns True if any value is True for is_open_for_comment
         query = """
         SELECT
             docket_id,
             MIN(posted_date) AS dateCreated,
             MIN(comment_start_date) AS dateCommentsOpened,
             MAX(comment_end_date) AS dateClosed,
-            MIN(effective_date) AS dateEffective
+            MIN(effective_date) AS dateEffective,
+            BOOL_OR(is_open_for_comment) AS is_open
         FROM documents
         WHERE docket_id = ANY(%s)
         GROUP BY docket_id
@@ -237,41 +182,44 @@ def append_document_dates(dockets_list, db_conn=None):
         cursor.execute(query, (docket_ids,))
         results = cursor.fetchall()
 
-        # Create lookup dictionaries for each date field, formatting dates as ISO strings if they are not None.
-        first_posted_dates = {
-            row[0]: row[1].isoformat() if row[1] is not None else None
-            for row in results
-        }
-        comments_open_dates = {
-            row[0]: row[2].isoformat() if row[2] is not None else None
-            for row in results
-        }
-        comments_close_dates = {
-            row[0]: row[3].isoformat() if row[3] is not None else None
-            for row in results
-        }
-
-        effective_dates = {
-            row[0]: row[4].isoformat() if row[4] is not None else None
-            for row in results
-        }
 
         '''
-        Append the document date fields to each docket in the list
-        None will be returned if dates aren't found, conforming to API spec requiring null dates
+        Create a lookup dictionary mapping docket_id to formatted date fields.
+        If dateClosed is None, isOpenForComment is set to True.
+        Otherwise, it uses the aggregated BOOL_OR from the database.
         '''
+        lookup = {}
+        for row in results:
+            docket_id, date_created, comments_open, comments_closed, effective, is_open_flag = row
+            lookup[docket_id] = {
+                "dateCreated": date_created.isoformat() if date_created is not None else None,
+                "dateCommentsOpened": comments_open.isoformat() if comments_open is not None else None,
+                "dateClosed": comments_closed.isoformat() if comments_closed is not None else None,
+                "dateEffective": effective.isoformat() if effective is not None else None,
+                "isOpenForComment": True if comments_closed is None else bool(is_open_flag)
+            }
+
         for item in dockets_list:
             docket_id = item["id"]
-            item["timelineDates"]["dateCreated"] = first_posted_dates.get(docket_id) 
-            item["timelineDates"]["dateCommentsOpened"] = comments_open_dates.get(docket_id) 
-            item["timelineDates"]["dateClosed"] = comments_close_dates.get(docket_id) 
-            item["timelineDates"]["dateEffective"] = effective_dates.get(docket_id) 
+            data = lookup.get(docket_id, {})
 
-        logging.info("Successfully appended document dates.")
+            item["timelineDates"] = {
+                "dateCreated": data.get("dateCreated"),
+                "dateCommentsOpened": data.get("dateCommentsOpened"),
+                "dateEffective": data.get("dateEffective")
+            }
+
+            # Only include dateClosed if it's not None
+            if data.get("dateClosed") is not None:
+                item["timelineDates"]["dateClosed"] = data["dateClosed"]
+
+            item["isOpenForComment"] = data.get("isOpenForComment", False)
+
+        logging.info("Successfully appended document dates and comment status.")
 
     except Exception as e:
         logging.error(f"Error executing SQL query: {e}")
-        raise DataRetrievalError("Failed to retrieve document dates.")
+        raise DataRetrievalError("Failed to retrieve document dates and comment status.")
 
     finally:
         cursor.close()
@@ -279,7 +227,6 @@ def append_document_dates(dockets_list, db_conn=None):
             conn.close()
         logging.info("Database connection closed.")
 
-    # Return the updated dockets list
     return dockets_list
 
 
@@ -326,15 +273,14 @@ def append_summary(dockets_list, db_conn=None):
         else:
             summary_lookup = {}
 
-        # Merge results into dockets_list, returns None if no summary is found
+        # Merge results into dockets_list
+        # No else block — don't include the "summary" key if no summary exists
         for item in dockets_list:
             docket_id = item["id"]
             if docket_id in abstract_lookup:
                 item["summary"] = abstract_lookup[docket_id]
             elif docket_id in summary_lookup:
                 item["summary"] = summary_lookup[docket_id]
-            else:
-                item["summary"] = None
 
         logging.info("Successfully appended summary info.")
 

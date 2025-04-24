@@ -3,7 +3,7 @@ from math import exp
 from dateutil import parser as date_parser
 from datetime import datetime, timezone
 from queries.utils.query_opensearch import query_OpenSearch
-from queries.utils.query_sql import append_docket_fields, append_agency_fields, append_document_counts, append_document_dates, append_summary
+from queries.utils.query_sql import append_docket_fields, append_agency_fields, append_document_dates, append_summary
 from queries.utils.sql import connect
 
 
@@ -232,7 +232,6 @@ def search(search_params):
 
         results = append_docket_fields(os_results, conn)
         results = append_agency_fields(results, conn)
-        results = append_document_counts(results, conn)
         results = append_document_dates(results, conn)
         results = append_summary(results, conn)
         results = filter_dockets(results, filterParams)
@@ -313,7 +312,6 @@ def search(search_params):
 
         dockets = append_docket_fields(dockets, conn)
         dockets = append_agency_fields(dockets, conn)
-        dockets = append_document_counts(dockets, conn)
         dockets = append_document_dates(dockets, conn)
         dockets = append_summary(dockets, conn)
 
